@@ -9,42 +9,40 @@ require('dotenv').config();
 
 const app = express();
 
-// Middleware
+// 1. MIDDLEWARE & STATIC FILES
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// 1. Serve static files from the React dist folder
-// This handles your CSS, JS, and Images
+// Serve static files from React (Fixes MIME type errors)
 app.use(express.static(path.join(__dirname, 'dist')));
+// Serve static uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use(cors({
-    origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
+    origin: ['http://localhost:5173', 'http://localhost:3000', 'https://lms-be1.onrender.com'],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
 }));
 
-// API Routes
+// 2. API ROUTES
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/admin', adminRoutes);
 
-// Static uploads folder
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-// Database Connection
+// 3. DATABASE CONNECTION
 mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log("MongoDB Connected Successfully"))
     .catch((err) => console.log("Database Connection Error: ", err));
 
-// 2. The "Crash-Proof" Catch-All Route
-// By NOT using a string like '*', we avoid the PathError in Node v23.
+// 4. THE CRASH-PROOF CATCH-ALL
+// We use app.use() without a path string to avoid the Node v23 PathError.
 app.use((req, res, next) => {
-    // If the request is for an API but no route matched, send a 404
+    // If it's an API request that wasn't caught above, return a 404
     if (req.url.startsWith('/api')) {
         return res.status(404).json({ message: "API route not found" });
     }
-    // For everything else, send the React index.html
+    // For everything else (React Router paths), serve index.html
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
