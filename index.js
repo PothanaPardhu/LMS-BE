@@ -9,40 +9,42 @@ require('dotenv').config();
 
 const app = express();
 
-// 1. MIDDLEWARE & STATIC FILES
+// Middleware
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Serve static files from React (Fixes MIME type errors)
+// Serve static files from the React dist folder
+// This must come BEFORE your catch-all route
 app.use(express.static(path.join(__dirname, 'dist')));
-// Serve static uploads
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use(cors({
-    origin: ['http://localhost:5173', 'http://localhost:3000', 'https://lms-be1.onrender.com'],
+    origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
 }));
 
-// 2. API ROUTES
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/admin', adminRoutes);
 
-// 3. DATABASE CONNECTION
+// Serve uploads folder
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Database Connection
 mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log("MongoDB Connected Successfully"))
     .catch((err) => console.log("Database Connection Error: ", err));
 
-// 4. THE CRASH-PROOF CATCH-ALL
-// We use app.use() without a path string to avoid the Node v23 PathError.
+// --- THE CRASH-PROOF CATCH-ALL ---
+// We use app.use instead of app.get('*') to avoid the path-to-regexp error
 app.use((req, res, next) => {
-    // If it's an API request that wasn't caught above, return a 404
+    // If the request is for an API route that doesn't exist, let it continue to 404
     if (req.url.startsWith('/api')) {
-        return res.status(404).json({ message: "API route not found" });
+        return next();
     }
-    // For everything else (React Router paths), serve index.html
+    // Otherwise, send the index.html for React Router to handle
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 

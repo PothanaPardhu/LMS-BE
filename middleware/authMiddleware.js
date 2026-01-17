@@ -20,7 +20,6 @@ const protect = (req, res, next) => {
     }
 };
 
-// Add this below your 'protect' function
 const adminOnly = (req, res, next) => {
     if (req.user && req.user.role === 'admin') {
         next();
